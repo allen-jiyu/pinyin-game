@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>海底小纵队 · 拼音召唤</title>
+<meta name="theme-color" content="#0b5c8a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="拼音召唤">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root{
+    --deep:#06315e; --sea:#0b5c8a; --wave:#14a0b8; --foam:#7fd8e8;
+    --sand:#f6d98a; --coral:#ff7a6b; --ink:#07243f; --card:#0f6f9e;
+    --sel:#ffd34d;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:#eaf6ff;
+    background:linear-gradient(180deg,#042640 0%,#06315e 35%,#0b5c8a 70%,#14a0b8 100%);
+    overflow-x:hidden; min-height:100vh;
+  }
+  .bubbles{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .bubble{position:absolute; bottom:-80px; background:rgba(255,255,255,.12);
+    border-radius:50%; animation:rise linear infinite;}
+  @keyframes rise{to{transform:translateY(-110vh); opacity:.1;}}
+  .wrap{position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:16px 18px 40px;}
+
+  header{text-align:center; margin:10px 0 14px;}
+  h1{font-size:30px; letter-spacing:2px; text-shadow:0 3px 10px rgba(0,0,0,.4);}
+  .sub{color:#bfe7f2; margin-top:6px; font-size:14px;}
+  .progress{margin-top:10px; display:inline-flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+    padding:6px 14px; border-radius:20px; font-size:14px;}
+  .progress b{color:#ffd34d; font-size:18px;}
+
+  /* 模式切换 */
+  .modes{display:flex; justify-content:center; gap:10px; margin:6px 0 18px;}
+  .mode{border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.08);
+    color:#eaf6ff; border-radius:24px; padding:9px 22px; cursor:pointer; font-size:15px; font-weight:700; transition:all .15s;}
+  .mode.sel{background:#ffd34d; color:#07304f; border-color:#ffd34d;}
+
+  .hidden{display:none !important;}
+
+  /* 主区 */
+  .main{display:grid; grid-template-columns:1fr 320px 1fr; gap:14px; align-items:start;}
+  @media(max-width:860px){ .main{grid-template-columns:1fr;} }
+
+  .deck h2{font-size:15px; margin:2px 0 10px; padding-left:10px; border-left:4px solid #ffd34d;}
+  .grid{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+  .card{
+    background:linear-gradient(160deg,var(--card),#0a4f7c);
+    border:2px solid rgba(255,255,255,.25); border-radius:12px;
+    padding:12px 4px; text-align:center; font-size:20px; font-weight:700;
+    cursor:pointer; user-select:none; transition:transform .12s, box-shadow .12s, border .12s;
+    color:#fff; min-height:48px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,.25);
+  }
+  .card:hover{transform:translateY(-3px); box-shadow:0 8px 16px rgba(0,0,0,.35);}
+  .card.sel{border-color:var(--sel); box-shadow:0 0 0 3px rgba(255,211,77,.35),0 8px 16px rgba(0,0,0,.4);
+    background:linear-gradient(160deg,#3a9bd0,#0a7cb0); transform:translateY(-3px);}
+
+  /* 合成台 */
+  .stage{
+    background:rgba(3,30,55,.55); border:1px solid rgba(255,255,255,.15);
+    border-radius:18px; padding:16px; text-align:center;
+    backdrop-filter:blur(3px); min-height:340px; display:flex; flex-direction:column;
+  }
+  .stage h2{font-size:16px; margin-bottom:12px; color:#bfe7f2;}
+  .slots{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:12px;}
+  .slot{width:92px; height:92px; border-radius:16px; border:2px dashed rgba(255,255,255,.35);
+    display:flex; align-items:center; justify-content:center; font-size:38px; font-weight:800;
+    background:rgba(255,255,255,.06); transition:all .15s;}
+  .slot.filled{border-style:solid; border-color:#ffd34d; background:linear-gradient(160deg,#3a9bd0,#0a7cb0);}
+  .plus{font-size:26px; color:#7fd8e8; font-weight:700;}
+  .result{min-height:88px; border-radius:12px; padding:10px 8px; margin:6px 0 12px;
+    background:rgba(0,0,0,.22); display:flex; flex-direction:column; justify-content:center;}
+  .result .big{font-size:40px; font-weight:800; letter-spacing:2px; color:#ffd34d; text-shadow:0 2px 8px rgba(0,0,0,.5);}
+  .result .hint{color:#bfe7f2; font-size:13px; margin-top:2px; min-height:18px;}
+
+  .tones{display:flex; justify-content:center; gap:6px; margin-bottom:12px; flex-wrap:wrap;}
+  .tone{border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.08);
+    color:#eaf6ff; border-radius:8px; padding:6px 0; width:56px; cursor:pointer;
+    font-size:15px; transition:all .12s;}
+  .tone.sel{background:#ffd34d; color:#07304f; border-color:#ffd34d; font-weight:700;}
+  .actions{display:flex; gap:10px; justify-content:center;}
+  button{border:none; cursor:pointer; border-radius:12px; font-size:16px; font-weight:700;
+    padding:12px 20px; transition:transform .12s, box-shadow .12s;}
+  .btn-summon{background:linear-gradient(160deg,#ff8a5c,#ff5c6c); color:#fff; flex:1;
+    box-shadow:0 5px 14px rgba(255,92,108,.45);}
+  .btn-summon:hover{transform:translateY(-2px);}
+  .btn-clear{background:rgba(255,255,255,.12); color:#eaf6ff;}
+  .btn-clear:hover{background:rgba(255,255,255,.2);}
+
+  /* 召唤 / 过关结果 */
+  .summon{margin-top:14px; padding:12px; border-radius:14px;
+    background:linear-gradient(160deg,rgba(255,122,107,.25),rgba(255,211,77,.18));
+    border:1px solid rgba(255,211,77,.4); animation:pop .5s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes pop{0%{transform:scale(.5); opacity:0;}100%{transform:scale(1); opacity:1;}}
+  .summon .hero{font-size:56px; display:inline-block; animation:bounce 1s infinite;}
+  @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+  .summon .name{font-size:18px; font-weight:800; color:#fff; margin-top:4px;}
+  .summon .skill{font-size:15px; color:#fff3d6; margin-top:2px;}
+  .summon .syl{font-size:26px; font-weight:800; color:#ffd34d; margin-top:2px;}
+
+  /* 过关学习卡：组词 / 造句（带拼音） */
+  .study{margin-top:12px; text-align:left; background:rgba(0,0,0,.22); border-radius:12px; padding:12px 14px;}
+  .study-row{margin:9px 0; font-size:23px; color:#fff; line-height:1.8; display:flex; align-items:flex-start;}
+  .study-row .lab{flex:none; font-size:12px; color:#07304f; background:#ffd34d; padding:3px 9px; border-radius:10px; margin-right:10px; margin-top:5px; font-weight:700;}
+  .study-row ruby{margin:0 1px;}
+  .study-row rt{font-size:11px; color:#9fe6f5;}
+  .study-row .sep{color:#7fd8e8; margin:0 6px;}
+
+  /* 闯关 */
+  .level{max-width:760px; margin:0 auto;}
+  .lv-dots{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:16px;}
+  .lv-dot{width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:14px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); cursor:pointer;}
+  .lv-dot.done{background:#2fbf71; border-color:#2fbf71;}
+  .lv-dot.cur{background:#ffd34d; border-color:#ffd34d; color:#07304f; box-shadow:0 0 0 3px rgba(255,211,77,.35);}
+  .lv-dot.lock{opacity:.4; cursor:not-allowed;}
+
+  .lv-target{background:rgba(3,30,55,.55); border:1px solid rgba(255,255,255,.15); border-radius:18px;
+    padding:20px; text-align:center; margin-bottom:16px;}
+  .lv-target .emoji{font-size:72px; display:block; animation:bounce 2s infinite;}
+  .lv-target .word{font-size:26px; font-weight:800; margin:4px 0 2px;}
+  .lv-target .pinyin{font-size:44px; font-weight:800; color:#ffd34d; text-shadow:0 2px 8px rgba(0,0,0,.5);}
+  .lv-target .ask{color:#bfe7f2; font-size:14px; margin-top:6px;}
+
+  .lv-pick{background:rgba(3,30,55,.4); border:1px solid rgba(255,255,255,.12); border-radius:18px; padding:16px; margin-bottom:14px;}
+  .lv-pick h3{font-size:14px; margin:10px 0 8px; color:#bfe7f2;}
+  .lv-pick h3:first-child{margin-top:0;}
+  .lv-pick .grid{grid-template-columns:repeat(4,1fr);}
+  .lv-result{min-height:44px; text-align:center; color:#ffd34d; font-size:16px; font-weight:700; margin-bottom:10px;}
+  .lv-actions{display:flex; gap:10px; justify-content:center;}
+
+  /* 收集 + 记录 */
+  .panel{margin-top:18px; background:rgba(3,30,55,.45); border:1px solid rgba(255,255,255,.12);
+    border-radius:14px; padding:14px; backdrop-filter:blur(2px);}
+  .panel h3{font-size:14px; margin-bottom:8px; color:#bfe7f2;}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; max-height:120px; overflow:auto;}
+  .chip{background:rgba(255,255,255,.12); border-radius:6px; padding:3px 8px; font-size:13px; color:#ffd34d;}
+  .log{display:flex; flex-direction:column; gap:6px; max-height:180px; overflow:auto; margin-top:8px;}
+  .logitem{font-size:13px; color:#dceef8; background:rgba(255,255,255,.06); padding:6px 10px; border-radius:8px; text-align:left;}
+  .logitem b{color:#ffd34d;}
+  .shake{animation:shake .4s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
+  .foot{margin-top:20px; text-align:center; color:#9fd3e4; font-size:12px; line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="bubbles" id="bubbles"></div>
+<div class="wrap">
+  <header>
+    <h1>🐙 海底小纵队 · 拼音召唤 🛥️</h1>
+    <div class="sub">闯关：拼对音节召唤队员 · 自由：拼出音节召唤成语</div>
+    <div class="progress">收集 <b id="count">0</b> 音节 · 闯关 <b id="lvCount">0</b>/<span id="lvTotal">24</span></div>
+  </header>
+
+  <div class="modes">
+    <button class="mode sel" id="modeLevel">🎮 闯关模式</button>
+    <button class="mode" id="modeFree">🎨 自由召唤</button>
+  </div>
+
+  <!-- 自由召唤 -->
+  <div class="main" id="freeView">
+    <section class="deck">
+      <h2>🔤 声母（20 个）</h2>
+      <div class="grid" id="initials"></div>
+    </section>
+    <section class="stage">
+      <h2>⚓ 拼读合成台</h2>
+      <div class="slots">
+        <div class="slot" id="slotInit">?</div>
+        <div class="plus">＋</div>
+        <div class="slot" id="slotFinal">?</div>
+      </div>
+      <div class="result">
+        <div class="big" id="preview">—</div>
+        <div class="hint" id="hint">选一张声母和一张韵母试试</div>
+      </div>
+      <div class="tones" id="tones"></div>
+      <div class="actions">
+        <button class="btn-summon" id="btnSummon">⚡ 召唤成语</button>
+        <button class="btn-clear" id="btnClear">清空</button>
+      </div>
+      <div id="summonBox"></div>
+    </section>
+    <section class="deck">
+      <h2>🅰️ 韵母（36 个）</h2>
+      <div class="grid" id="finals"></div>
+    </section>
+  </div>
+
+  <!-- 闯关 -->
+  <div class="level hidden" id="levelView">
+    <div class="lv-dots" id="lvDots"></div>
+    <div class="lv-target" id="lvTarget"></div>
+    <div class="lv-pick">
+      <div id="spellSteps">
+        <h3>① 选声母</h3>
+        <div class="grid" id="lvInits"></div>
+        <h3>② 选韵母</h3>
+        <div class="grid" id="lvFinals"></div>
+        <h3>③ 选声调</h3>
+        <div class="tones" id="lvTones"></div>
+      </div>
+      <div id="charStep" class="hidden">
+        <h3>④ 选对字（近音字辨析）</h3>
+        <div class="grid" id="lvChars"></div>
+      </div>
+    </div>
+    <div class="lv-result" id="lvResult"></div>
+    <div class="lv-actions" id="lvActions"></div>
+  </div>
+
+  <div class="panel">
+    <h3>📖 我的音节图鉴（已点亮）</h3>
+    <div class="chips" id="chips"></div>
+    <h3 style="margin-top:10px;">🗒️ 召唤记录</h3>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="foot">
+    闯关：看图认词 → 选声母 → 选韵母 → 选声调 → 选对字。<br>
+    自由召唤：任意拼，拼对即召唤成语。j q x y 遇 ü 去两点；w 配 ui→wei、un→wen。<br>
+    🎵 每过 5 关奖励一首《小星星》，答错别怕，多鼓励多尝试～<br>
+    🔊 读音依赖浏览器中文语音（部分系统需安装中文语音包）。
+  </div>
+</div>
+
+<script>
+/* ============ 数据 ============ */
+const INITIALS = ['b','p','m','f','d','t','n','l','g','k','h','j','q','x','zh','ch','sh','r','z','c','s','y','w'];
+const FINALS = [
+  'a','o','e','i','u','ü','ai','ei','ui','ao','ou','iu','ie','üe','er',
+  'an','en','in','un','ün','ang','eng','ing','ong',
+  'ia','iao','ian','iang','iong','ua','uo','uai','uan','uang','ueng','üan'
+];
+const VALID = {
+  b:['a','o','i','u','ai','ei','ao','ie','iao','ian','an','en','in','ang','eng','ing'],
+  p:['a','o','i','u','ai','ei','ao','ou','ie','iao','ian','an','en','in','ang','eng','ing'],
+  m:['a','o','e','i','u','ai','ei','ao','ou','ie','iu','iao','ian','an','en','in','ang','eng','ing'],
+  f:['a','o','u','ei','ou','an','en','ang','eng'],
+  d:['a','e','i','u','ai','ei','ao','ou','ie','iu','iao','ian','ui','uo','uan','un','an','ang','eng','ing','ong'],
+  t:['a','e','i','u','ai','ao','ou','ie','iao','ian','ui','uo','uan','un','an','ang','eng','ing','ong'],
+  n:['a','e','i','u','ü','ai','ei','ao','ou','ie','iu','iao','ian','in','iang','ing','an','en','ang','eng','ong','uan','uo','üe'],
+  l:['a','e','i','u','ü','ai','ei','ao','ou','ie','iu','iao','ian','in','iang','ing','an','ang','eng','ong','un','uan','uo','üe'],
+  g:['a','e','u','ai','ei','ao','ou','ua','uo','uai','ui','uan','un','uang','ong','an','en','ang','eng'],
+  k:['a','e','u','ai','ao','ou','ua','uo','uai','ui','uan','un','uang','ong','an','en','ang','eng'],
+  h:['a','e','u','ai','ei','ao','ou','ua','uo','uai','ui','uan','un','uang','ong','an','en','ang','eng'],
+  j:['i','ia','ie','iao','iu','ian','in','iang','ing','ü','üe','üan','ün','iong'],
+  q:['i','ia','ie','iao','iu','ian','in','iang','ing','ü','üe','üan','ün','iong'],
+  x:['i','ia','ie','iao','iu','ian','in','iang','ing','ü','üe','üan','ün','iong'],
+  zh:['a','e','i','u','ai','ao','ou','ua','uo','uai','ui','uan','un','uang','ong','an','en','ang','eng'],
+  ch:['a','e','i','u','ai','ao','ou','ua','uo','uai','ui','uan','un','uang','ong','an','en','ang','eng'],
+  sh:['a','e','i','u','ai','ao','ou','ua','uo','uai','ui','uan','un','uang','an','en','ang','eng'],
+  r:['e','i','u','ao','ou','uo','ui','uan','un','ong','an','en','ang','eng'],
+  z:['a','e','i','u','ai','ei','ao','ou','uo','ui','uan','un','ong','an','en','ang','eng'],
+  c:['a','e','i','u','ai','ao','ou','uo','ui','uan','un','ong','an','en','ang','eng'],
+  s:['a','e','i','u','ai','ao','ou','uo','ui','uan','un','ong','an','en','ang','eng'],
+  y:['i','a','o','e','ao','ou','an','in','ang','ing','ong','ü','üe','üan','ün'],
+  w:['u','a','o','ai','ui','an','un','ang','eng'],
+};
+
+const CHARACTERS = [
+  {name:'巴克队长', en:'Captain Barnacles', emoji:'🐻‍❄️', skills:['破冰冲锋','极地旋风','冰山守护']},
+  {name:'呱唧',     en:'Kwazii',            emoji:'🐱',   skills:['海盗突袭','疾风利爪','深海跳跃']},
+  {name:'皮医生',   en:'Peso',              emoji:'🐧',   skills:['治愈光波','急救脉冲','守护结界']},
+  {name:'章教授',   en:'Professor Inkling', emoji:'🐙',   skills:['墨海迷雾','智慧之光','八爪缠绕']},
+  {name:'突突兔',   en:'Tweak',             emoji:'🐰',   skills:['机械强化','扳手风暴','极速改装']},
+  {name:'达西西',   en:'Dashi',             emoji:'🐶',   skills:['定格闪光','快门捕捉','影像记录']},
+  {name:'谢灵通',   en:'Shellington',       emoji:'🦦',   skills:['百科雷达','海流解析','知识涌流']},
+  {name:'小萝卜',   en:'Tunip',             emoji:'🥕',   skills:['蔬菜能量','光合爆发','花园守护']},
+];
+
+const SPECIAL = {
+  'ba':{c:0,s:'破冰冲锋'}, 'gua':{c:1,s:'海盗突袭'}, 'pi':{c:2,s:'治愈光波'},
+  'zhang':{c:3,s:'墨海迷雾'}, 'tu':{c:4,s:'机械强化'}, 'da':{c:5,s:'定格闪光'},
+  'xie':{c:6,s:'百科雷达'}, 'luo':{c:7,s:'蔬菜能量'}, 'hai':{c:6,s:'海流解析'},
+  'long':{c:6,s:'深海巨浪'}, 'xue':{c:2,s:'冰雪治愈'}, 'dong':{c:0,s:'极地冰冻'},
+  'mao':{c:1,s:'灵猫出击'}, 'beng':{c:0,s:'冰山飞跃'}, 'you':{c:6,s:'海洋巡航'},
+  'yan':{c:5,s:'海底摄影'}, 'shui':{c:6,s:'潜流探秘'}, 'lei':{c:5,s:'声波定位'},
+  'tian':{c:0,s:'天空俯瞰'}, 'shan':{c:1,s:'珊瑚冲刺'}, 'bei':{c:7,s:'贝壳壁垒'},
+};
+
+// 成语词库：音节 → 四字成语（自由模式用于发音/展示）
+const CHENGYU = {
+  ba:'八仙过海|各有各的本领和办法',
+  bai:'百发百中|每次都能射中，很有把握',
+  ban:'半途而废|事情做到一半就不做了',
+  bao:'抱薪救火|用错误的方法解决问题，反而更糟',
+  bei:'背水一战|没有退路，只能拼命一搏',
+  ben:'笨鸟先飞|自己不如别人，就多下功夫先做',
+  bi:'比翼双飞|两个人一起进步、一起努力',
+  bian:'变化多端|变化很多，难以预料',
+  biao:'表里如一|心里想的和做的一样好',
+  bie:'别出心裁|想出的办法很特别',
+  bing:'冰天雪地|到处是冰雪，很冷',
+  bo:'博大精深|知识很多很深',
+  bu:'不耻下问|愿意向别人请教',
+  cai:'才华横溢|非常有才能',
+  cang:'沧海桑田|时间过得很快，变化很大',
+  cao:'草木皆兵|太害怕，把什么都当成敌人',
+  cha:'差强人意|还算可以，勉强让人满意',
+  chang:'长年累月|很长很长时间',
+  chao:'朝三暮四|总是变来变去，不专一',
+  che:'车水马龙|车和人很多，很热闹',
+  chen:'沉着冷静|遇到事情不慌不乱',
+  cheng:'成竹在胸|心里已经有了打算',
+  chi:'持之以恒|一直坚持，不放弃',
+  chong:'冲锋陷阵|勇敢地冲在最前面',
+  chou:'愁眉苦脸|愁得皱起眉头',
+  chu:'出类拔萃|比别人优秀得多',
+  chuan:'川流不息|像河水一样不停流动',
+  chuang:'窗明几净|屋子干净明亮',
+  chui:'垂头丧气|失望得低下了头',
+  chun:'春暖花开|春天天气暖和，花儿开放',
+  ci:'辞旧迎新|告别旧的，迎接新的',
+  cong:'聪明伶俐|又聪明又机灵',
+  cu:'粗心大意|做事情不细心',
+  cun:'寸步难行|一步也走不动',
+  cuo:'措手不及|事情来得太突然，来不及准备',
+  da:'大显身手|好好地展示本领',
+  dai:'呆若木鸡|惊讶得愣住了',
+  dan:'胆小如鼠|胆子很小',
+  dang:'当机立断|关键时刻立刻做决定',
+  dao:'道听途说|没有根据的话，随便听来的',
+  de:'得意忘形|高兴得忘了自己是谁',
+  deng:'灯火辉煌|灯光很亮，很热闹',
+  di:'滴水穿石|一点点努力，坚持就能成功',
+  dian:'点石成金|把普通的东西变成宝贝',
+  diao:'雕虫小技|很小的本事',
+  ding:'顶天立地|站得直，有担当',
+  dong:'东山再起|失败后又重新站起来',
+  du:'独一无二|没有第二个，很特别',
+  duan:'短兵相接|面对面地交锋',
+  dui:'对牛弹琴|对不懂的人讲道理',
+  duo:'多多益善|越多越好',
+  en:'恩重如山|恩情像山一样重',
+  er:'耳聪目明|耳朵灵，眼睛亮，很机敏',
+  fa:'发愤图强|下定决心努力变强',
+  fan:'翻山越岭|翻过很多山，很辛苦',
+  fang:'防微杜渐|在问题刚出现时就制止',
+  fei:'飞黄腾达|一下子升得很快，很成功',
+  fen:'分秒必争|一分钟也不浪费',
+  feng:'风和日丽|天气很好，适合出去玩',
+  fu:'赴汤蹈火|不怕危险，勇敢向前',
+  gai:'改过自新|改正错误，重新做人',
+  gan:'感恩戴德|对别人的帮助非常感激',
+  gang:'刚正不阿|正直，不向坏人低头',
+  gao:'高瞻远瞩|看得远，想得长远',
+  ge:'各抒己见|每个人都说自己的想法',
+  gen:'根深蒂固|基础很牢固，很难改变',
+  geng:'更上一层楼|再进一步，做得更好',
+  gong:'功到自然成|功夫下到了，自然能成功',
+  gu:'古往今来|从古到今',
+  gua:'瓜熟蒂落|条件成熟了，事情自然成功',
+  guan:'关怀备至|照顾得非常周到',
+  guang:'光明磊落|做人光明正大',
+  gui:'贵在坚持|最难得的是能坚持',
+  guo:'国泰民安|国家太平，人民幸福',
+  hai:'海纳百川|心胸宽广，能容纳很多',
+  han:'汗马功劳|立下的功劳很大',
+  hao:'好高骛远|不切实际地追求过高目标',
+  he:'鹤立鸡群|在人群中特别突出',
+  hei:'黑白分明|对错分得很清楚',
+  hen:'恨铁不成钢|对别人期望高，恨他不争气',
+  heng:'横冲直撞|乱冲乱撞，不守规矩',
+  hong:'红红火火|很兴旺，很热闹',
+  hou:'后来居上|后来的人超过前面的人',
+  hu:'狐假虎威|借别人的威风吓人',
+  hua:'画龙点睛|在关键处点一下，让作品更好',
+  huai:'怀才不遇|有本事却没机会施展',
+  huan:'欢天喜地|非常高兴',
+  huang:'恍然大悟|一下子明白了',
+  hui:'回心转意|改变原来的想法',
+  huo:'活到老学到老|一辈子都要学习',
+  ji:'机不可失|好机会不能错过',
+  jia:'家喻户晓|每家每户都知道',
+  jian:'见义勇为|看到正义的事就勇敢去做',
+  jiang:'将心比心|用自己的心去体谅别人',
+  jiao:'脚踏实地|做事认真踏实',
+  jie:'捷足先登|行动快的人先到达',
+  jin:'金玉良言|非常宝贵的劝告',
+  jing:'精益求精|好了还要更好',
+  jiong:'炯炯有神|眼睛很有精神',
+  jiu:'九牛一毛|非常小的一点点',
+  ju:'聚精会神|注意力非常集中',
+  juan:'卷土重来|失败后再来一次',
+  jue:'绝处逢生|在最危险时找到生路',
+  jun:'君子之交|真诚而清淡的友谊',
+  kai:'开门见山|直接说出主题',
+  kan:'侃侃而谈|很自信地说话',
+  kang:'慷慨解囊|大方地拿出钱来帮助别人',
+  ke:'刻苦钻研|下苦功夫学习研究',
+  ken:'勤勤恳恳|做事认真踏实',
+  kong:'空穴来风|消息不是完全没有根据',
+  kou:'口口声声|反复地这样说',
+  ku:'苦尽甘来|苦日子过去，好日子来了',
+  kua:'夸夸其谈|光说大话，不实际',
+  kuai:'快马加鞭|再加把劲，跑得更快',
+  kuan:'宽宏大量|心胸宽广，不计较',
+  kuang:'狂风暴雨|风很大，雨很猛',
+  kui:'功亏一篑|快成功时差一点没完成',
+  kun:'困兽犹斗|被困住还在挣扎',
+  la:'拉帮结派|结成小团体，做不好的事',
+  lai:'来之不易|得到它很不容易',
+  lang:'狼吞虎咽|吃得很急很猛',
+  lao:'劳逸结合|工作和休息搭配好',
+  le:'乐此不疲|很喜欢做，不觉得累',
+  lei:'雷厉风行|做事又快又有劲',
+  leng:'冷暖自知|自己的感受自己最清楚',
+  li:'力大无穷|力气特别大',
+  lian:'恋恋不舍|舍不得离开',
+  liang:'良师益友|好的老师和朋友',
+  liao:'了如指掌|非常了解',
+  lie:'烈日炎炎|太阳很晒',
+  lin:'琳琅满目|好东西很多，看不过来',
+  ling:'灵机一动|突然想出一个好主意',
+  liu:'流连忘返|玩得高兴，舍不得走',
+  long:'龙马精神|很有精神，很有干劲',
+  lu:'路不拾遗|路上掉的没人捡，风气很好',
+  luan:'乱七八糟|乱得没有条理',
+  lun:'论功行赏|按功劳大小给奖励',
+  luo:'落花流水|被打得大败',
+  lü:'屡见不鲜|见多了，不觉得新奇',
+  lüe:'略胜一筹|比别人稍微好一点',
+  ma:'马到成功|一到就成功，很顺利',
+  mai:'埋头苦干|专心努力地做事',
+  man:'满腹经纶|读了很多书，很有学问',
+  mang:'忙里偷闲|在忙碌中抽空休息',
+  mao:'毛遂自荐|自己推荐自己',
+  mei:'美不胜收|美好的东西太多，看不够',
+  meng:'梦想成真|愿望实现了',
+  mi:'迷途知返|走错了路能及时回头',
+  mian:'面面俱到|每方面都照顾到',
+  miao:'妙笔生花|写得好，画得好',
+  min:'敏而好学|聪明又爱学习',
+  ming:'名副其实|名字和实际相符',
+  mo:'默默无闻|不声张，不追求出名',
+  mu:'目不转睛|眼睛一眨不眨地看',
+  na:'拿手好戏|最擅长的本领',
+  nai:'耐人寻味|值得细细品味',
+  nan:'难能可贵|能做到很不容易，很珍贵',
+  nao:'恼羞成怒|又气又羞愧，发起火来',
+  neng:'能说会道|很会说话',
+  ni:'逆水行舟|不进则退，要不断努力',
+  nian:'念念不忘|一直记在心里',
+  niao:'鸟语花香|春天鸟叫、花香，很美',
+  nie:'蹑手蹑脚|轻轻悄悄地走路',
+  ning:'宁静致远|心静才能走得更远',
+  niu:'牛刀小试|小试一下本领',
+  nong:'弄巧成拙|想取巧反而坏事',
+  nu:'努力不懈|一直努力不放松',
+  ou:'呕心沥血|花了很多心血',
+  pai:'排山倒海|力量非常大',
+  pan:'判若两人|前后像变了一个人',
+  pang:'庞然大物|又大又笨重的东西',
+  pao:'抛砖引玉|先说点浅的，引出别人更好的',
+  pei:'配合默契|合作得很协调',
+  peng:'鹏程万里|前途很远大',
+  pi:'披荆斩棘|克服重重困难',
+  pian:'翩翩起舞|跳起舞来很好看',
+  piao:'漂漂亮亮|很好看',
+  pin:'品学兼优|品德和学习都很好',
+  ping:'平平安安|很平安，没出什么事',
+  po:'破釜沉舟|下定决心，不留后路',
+  pu:'普天同庆|大家一起庆祝',
+  qi:'齐心协力|大家一条心，一起努力',
+  qia:'恰到好处|刚刚好',
+  qian:'千辛万苦|非常辛苦',
+  qiang:'强词夺理|没理也要硬说有理',
+  qiao:'巧夺天工|手艺特别精巧',
+  qie:'锲而不舍|不停地刻，比喻坚持',
+  qin:'勤学苦练|勤奋学习，刻苦练习',
+  qing:'青云直上|升得很快',
+  qiong:'穷追不舍|紧追着不放',
+  qiu:'秋高气爽|秋天天气清爽',
+  qu:'取长补短|学习别人的长处补自己的短处',
+  quan:'全力以赴|用全部力量去做',
+  que:'缺一不可|缺了哪一个都不行',
+  qun:'群策群力|大家一起想办法出力气',
+  ran:'燃眉之急|非常紧急的事',
+  re:'热火朝天|干得很有劲，很热闹',
+  ren:'人山人海|人非常多',
+  ri:'日积月累|一天天积累起来',
+  rong:'容光焕发|精神很好，脸色有光',
+  ru:'如愿以偿|愿望实现了',
+  rui:'锐不可当|气势很猛，挡不住',
+  ruo:'弱不禁风|身体弱，经不起风雨',
+  sai:'塞翁失马|坏事有时也能变好事',
+  san:'三心二意|不专心，想东想西',
+  sen:'森罗万象|包含的东西非常多',
+  sha:'煞费苦心|费了很多心思',
+  shan:'善解人意|很能理解别人的心',
+  shang:'赏心悦目|看着心里很舒服',
+  shao:'少年老成|年纪小却像大人一样稳重',
+  she:'舍己为人|为了别人牺牲自己',
+  shen:'神采奕奕|精神很好，很有神采',
+  sheng:'生机勃勃|很有生命力，很旺盛',
+  shi:'十全十美|非常完美',
+  shou:'手到擒来|很容易就能做到',
+  shu:'熟能生巧|练熟了就能做得好',
+  shuang:'双喜临门|两件好事一起来',
+  shui:'水滴石穿|坚持就能成功',
+  shun:'顺其自然|顺着事情自然发展',
+  shuo:'说一不二|说话算数',
+  si:'四面八方|各个方向',
+  song:'送旧迎新|告别旧年，迎接新年',
+  su:'素不相识|从来都不认识',
+  suan:'酸甜苦辣|各种滋味，各种经历',
+  sui:'随心所欲|想怎样就怎样',
+  suo:'所向无敌|没有对手，一路取胜',
+  ta:'踏踏实实|做事认真，不浮夸',
+  tai:'泰然自若|遇到事很镇定',
+  tan:'谈笑风生|说说笑笑，很有生气',
+  tang:'堂堂正正|做人光明正大',
+  tao:'桃李满天下|学生非常多',
+  teng:'腾云驾雾|像驾着云在天上飞',
+  ti:'体贴入微|照顾得非常细心',
+  tian:'天长地久|时间很长很久',
+  tiao:'调虎离山|想办法把对方引开',
+  tie:'铁面无私|办事公正，不徇私',
+  ting:'亭亭玉立|站得直，姿态很美',
+  tong:'同心协力|一条心，一起努力',
+  tou:'头头是道|说得很有条理',
+  tu:'突飞猛进|进步非常快',
+  tuan:'团结一致|大家一条心',
+  tui:'推己及人|用自己的心去体谅别人',
+  tun:'吞吞吐吐|说话不痛快，含糊',
+  tuo:'脱颖而出|本领显露出来',
+  wa:'挖空心思|想尽了办法',
+  wai:'歪打正着|本来没打算，却碰巧做对了',
+  wan:'万紫千红|花开得多彩，很美丽',
+  wang:'亡羊补牢|出了问题及时补救',
+  wei:'未雨绸缪|提前做好准备',
+  wen:'温故知新|复习旧知识，学新知识',
+  weng:'瓮中捉鳖|很有把握，跑不掉',
+  wo:'卧薪尝胆|吃苦磨练，立志变强',
+  wu:'五彩缤纷|颜色很多，很好看',
+  xi:'喜气洋洋|充满高兴的样子',
+  xia:'狭路相逢|在窄路上相遇，躲不开',
+  xian:'先人后己|先为别人着想',
+  xiang:'相敬如宾|互相尊敬',
+  xiao:'小心翼翼|做事很小心',
+  xie:'谢天谢地|感谢老天，松了口气',
+  xin:'心想事成|心里想的都能实现',
+  xing:'兴高采烈|非常高兴',
+  xiong:'胸有成竹|心里早有打算',
+  xiu:'秀外慧中|外表好看，内心也聪明',
+  xu:'栩栩如生|像真的一样',
+  xuan:'绚丽多彩|颜色鲜艳好看',
+  xue:'学无止境|学习没有尽头',
+  xun:'循序渐进|一步一步慢慢来',
+  ya:'鸦雀无声|静得没有一点声音',
+  yan:'眼疾手快|动作又快又准',
+  yang:'扬眉吐气|摆脱压抑，感到自豪',
+  yao:'耀武扬威|显示威风，炫耀武力',
+  ye:'夜以继日|日夜不停',
+  yi:'一心一意|专心做一件事',
+  yin:'引人入胜|非常吸引人',
+  ying:'迎难而上|迎着困难前进',
+  yong:'勇往直前|勇敢地一直向前',
+  you:'游刃有余|做起来很轻松',
+  yu:'雨过天晴|困难过去，情况变好',
+  yuan:'源源不断|接连不断',
+  yue:'跃跃欲试|急着想试试',
+  yun:'运筹帷幄|在后方策划，很有谋略',
+  za:'杂乱无章|乱糟糟，没有条理',
+  zai:'再接再厉|继续努力，更上一层',
+  zan:'赞不绝口|不停地夸奖',
+  zao:'早睡早起|早点睡早点起，身体好',
+  ze:'责无旁贷|该自己做的，不能推给别人',
+  zeng:'蒸蒸日上|一天比一天兴旺',
+  zhan:'沾沾自喜|为一点小成绩就得意',
+  zhang:'张灯结彩|挂灯结彩，很喜庆',
+  zhao:'朝气蓬勃|很有活力',
+  zhe:'遮风挡雨|替别人挡风雨',
+  zhen:'真心实意|真心诚意，不虚假',
+  zheng:'争分夺秒|抓紧每一分钟',
+  zhi:'知足常乐|懂得满足，就会快乐',
+  zhong:'众志成城|大家一条心，力量就大',
+  zhou:'周而复始|一圈一圈地循环',
+  zhu:'助人为乐|帮助别人，自己也快乐',
+  zhuan:'专心致志|一心一意，不分心',
+  zhuang:'茁壮成长|健康地长大',
+  zhui:'追根究底|一定要问清原因',
+  zhun:'谆谆教诲|耐心地教导',
+  zhuo:'卓有成效|效果很显著',
+  zi:'自强不息|自己努力，永不停息',
+  zong:'总而言之|总的来说',
+  zou:'走马观花|粗略地看看',
+  zu:'足智多谋|很有办法',
+  zui:'罪有应得|做坏事就该受罚',
+  zun:'尊老爱幼|尊敬老人，爱护小孩',
+  zuo:'坐井观天|见识少，眼界窄',
+};
+
+// 闯关关卡（syl 目标音节 / tone 声调 / emoji 配图 / words 组词列表 / wordsPy 对应拼音 / sentence 造句 / sentencePy 逐字拼音）
+const LEVELS = [
+  {syl:'ba', tone:4, emoji:'👨', words:['爸爸','老爸','爸妈'], wordsPy:['bà ba','lǎo bà','bà mā'], sentence:'我爱我的爸爸。', sentencePy:'wǒ ài wǒ de bà ba。', char:'爸'},
+  {syl:'ma', tone:1, emoji:'👩', words:['妈妈','大妈','阿妈'], wordsPy:['mā ma','dà mā','ā mā'], sentence:'妈妈我爱你。', sentencePy:'mā ma wǒ ài nǐ。', char:'妈'},
+  {syl:'ma', tone:3, emoji:'🐴', words:['马儿','白马','木马'], wordsPy:['mǎ ér','bái mǎ','mù mǎ'], sentence:'马儿跑得真快！', sentencePy:'mǎ ér pǎo de zhēn kuài！', char:'马'},
+  {syl:'da', tone:4, emoji:'🐘', words:['大象','大海','大人'], wordsPy:['dà xiàng','dà hǎi','dà ren'], sentence:'大象很可爱。', sentencePy:'dà xiàng hěn kě ài。', char:'大'},
+  {syl:'mu', tone:4, emoji:'🌲', words:['木头','积木','树木'], wordsPy:['mù tou','jī mù','shù mù'], sentence:'积木真好玩！', sentencePy:'jī mù zhēn hǎo wán！', char:'木'},
+  {syl:'lü', tone:4, emoji:'🟢', words:['绿色','绿叶','绿草'], wordsPy:['lǜ sè','lǜ yè','lǜ cǎo'], sentence:'绿色让世界更美丽。', sentencePy:'lǜ sè ràng shì jiè gèng měi lì。', char:'绿'},
+  {syl:'yu', tone:2, emoji:'🐟', words:['小鱼','金鱼','钓鱼'], wordsPy:['xiǎo yú','jīn yú','diào yú'], sentence:'小鱼在水里快乐地游。', sentencePy:'xiǎo yú zài shuǐ lǐ kuài lè de yóu。', char:'鱼'},
+  {syl:'mao', tone:1, emoji:'🐱', words:['小猫','花猫','猫咪'], wordsPy:['xiǎo māo','huā māo','māo mī'], sentence:'小猫真可爱！', sentencePy:'xiǎo māo zhēn kě ài！', char:'猫'},
+  {syl:'gou', tone:3, emoji:'🐶', words:['小狗','狗狗','猎狗'], wordsPy:['xiǎo gǒu','gǒu gou','liè gǒu'], sentence:'小狗是我们的好朋友。', sentencePy:'xiǎo gǒu shì wǒ men de hǎo péng you。', char:'狗'},
+  {syl:'niao', tone:3, emoji:'🐦', words:['小鸟','鸟儿','飞鸟'], wordsPy:['xiǎo niǎo','niǎo ér','fēi niǎo'], sentence:'小鸟快乐地唱歌。', sentencePy:'xiǎo niǎo kuài lè de chàng gē。', char:'鸟'},
+  {syl:'hua', tone:1, emoji:'🌸', words:['红花','花朵','花园'], wordsPy:['hóng huā','huā duǒ','huā yuán'], sentence:'花园里的花真美！', sentencePy:'huā yuán lǐ de huā zhēn měi！', char:'花'},
+  {syl:'cao', tone:3, emoji:'🌿', words:['小草','草地','草原'], wordsPy:['xiǎo cǎo','cǎo dì','cǎo yuán'], sentence:'小草绿油油，真好看。', sentencePy:'xiǎo cǎo lǜ yóu yóu zhēn hǎo kàn', char:'草'},
+  {syl:'shan', tone:1, emoji:'⛰️', words:['大山','高山','爬山'], wordsPy:['dà shān','gāo shān','pá shān'], sentence:'爬山真有趣！', sentencePy:'pá shān zhēn yǒu qù！', char:'山'},
+  {syl:'yu', tone:3, emoji:'🌧️', words:['下雨','春雨','雨伞'], wordsPy:['xià yǔ','chūn yǔ','yǔ sǎn'], sentence:'春雨让小草发芽。', sentencePy:'chūn yǔ ràng xiǎo cǎo fā yá。', char:'雨'},
+  {syl:'xue', tone:3, emoji:'❄️', words:['下雪','雪花','雪人'], wordsPy:['xià xuě','xuě huā','xuě rén'], sentence:'雪花真美啊！', sentencePy:'xuě huā zhēn měi a！', char:'雪'},
+  {syl:'feng', tone:1, emoji:'🌬️', words:['大风','春风','风车'], wordsPy:['dà fēng','chūn fēng','fēng chē'], sentence:'春风真温柔。', sentencePy:'chūn fēng zhēn wēn róu。', char:'风'},
+  {syl:'yun', tone:2, emoji:'☁️', words:['白云','乌云','云朵'], wordsPy:['bái yún','wū yún','yún duǒ'], sentence:'天上的白云真美！', sentencePy:'tiān shàng de bái yún zhēn měi！', char:'云'},
+  {syl:'tian', tone:1, emoji:'🌤️', words:['天空','蓝天','明天'], wordsPy:['tiān kōng','lán tiān','míng tiān'], sentence:'明天会更好！', sentencePy:'míng tiān huì gèng hǎo！', char:'天'},
+  {syl:'he', tone:2, emoji:'🏞️', words:['小河','大河','河水'], wordsPy:['xiǎo hé','dà hé','hé shuǐ'], sentence:'小河唱着欢快的歌。', sentencePy:'xiǎo hé chàng zhe huān kuài de gē。', char:'河'},
+  {syl:'shu', tone:4, emoji:'🌳', words:['大树','小树','树木'], wordsPy:['dà shù','xiǎo shù','shù mù'], sentence:'我们要爱护小树。', sentencePy:'wǒ men yào ài hù xiǎo shù。', char:'树'},
+  {syl:'hong', tone:2, emoji:'🔴', words:['红旗','红色','红花'], wordsPy:['hóng qí','hóng sè','hóng huā'], sentence:'五星红旗真鲜艳！', sentencePy:'wǔ xīng hóng qí zhēn xiān yàn！', char:'红'},
+  {syl:'xiao', tone:3, emoji:'🐭', words:['小心','小鸟','小朋友'], wordsPy:['xiǎo xīn','xiǎo niǎo','xiǎo péng you'], sentence:'小朋友天天向上！', sentencePy:'xiǎo péng you tiān tiān xiàng shàng！', char:'小'},
+  {syl:'gao', tone:1, emoji:'🦒', words:['高兴','高山','长高'], wordsPy:['gāo xìng','gāo shān','zhǎng gāo'], sentence:'我今天很高兴！', sentencePy:'wǒ jīn tiān hěn gāo xìng！', char:'高'},
+  {syl:'chang', tone:2, emoji:'🐍', words:['很长','长江','长城'], wordsPy:['hěn cháng','cháng jiāng','cháng chéng'], sentence:'长城是中国的骄傲。', sentencePy:'cháng chéng shì zhōng guó de jiāo ào。', char:'长'},
+  {syl:'shui', tone:3, emoji:'💧', words:['河水','喝水','水杯'], wordsPy:['hé shuǐ','hē shuǐ','shuǐ bēi'], sentence:'河水清清的。', sentencePy:'hé shuǐ qīng qīng de。', char:'水'},
+  {syl:'huo', tone:3, emoji:'🔥', words:['火苗','大火','火车'], wordsPy:['huǒ miáo','dà huǒ','huǒ chē'], sentence:'火车跑得快！', sentencePy:'huǒ chē pǎo de kuài！', char:'火'},
+  {syl:'tu', tone:3, emoji:'🪨', words:['泥土','土地','沙土'], wordsPy:['ní tǔ','tǔ dì','shā tǔ'], sentence:'泥土里有种子。', sentencePy:'ní tǔ lǐ yǒu zhǒng zi。', char:'土'},
+  {syl:'kou', tone:3, emoji:'👄', words:['开口','门口','口袋'], wordsPy:['kāi kǒu','mén kǒu','kǒu dài'], sentence:'门口有一棵大树。', sentencePy:'mén kǒu yǒu yī kē dà shù。', char:'口'},
+  {syl:'shou', tone:3, emoji:'✋', words:['小手','洗手','手指'], wordsPy:['xiǎo shǒu','xǐ shǒu','shǒu zhǐ'], sentence:'饭前要洗手。', sentencePy:'fàn qián yào xǐ shǒu。', char:'手'},
+  {syl:'tou', tone:2, emoji:'👤', words:['点头','头上','木头'], wordsPy:['diǎn tóu','tóu shang','mù tou'], sentence:'小猫咪点点头。', sentencePy:'xiǎo māo mī diǎn diǎn tóu。', char:'头'},
+  {syl:'yan', tone:3, emoji:'👀', words:['眼睛','眼泪','眨眼'], wordsPy:['yǎn jing','yǎn lèi','zhǎ yǎn'], sentence:'眼睛是心灵的窗户。', sentencePy:'yǎn jing shì xīn líng de chuāng hu。', char:'眼'},
+  {syl:'men', tone:2, emoji:'🚪', words:['大门','门口','开门'], wordsPy:['dà mén','mén kǒu','kāi mén'], sentence:'请帮我开门。', sentencePy:'qǐng bāng wǒ kāi mén。', char:'门'},
+  {syl:'deng', tone:1, emoji:'💡', words:['电灯','灯光','路灯'], wordsPy:['diàn dēng','dēng guāng','lù dēng'], sentence:'路灯亮起来了。', sentencePy:'lù dēng liàng qǐ lái le。', char:'灯'},
+  {syl:'chuan', tone:2, emoji:'⛵', words:['小船','帆船','轮船'], wordsPy:['xiǎo chuán','fān chuán','lún chuán'], sentence:'小船漂在水面上。', sentencePy:'xiǎo chuán piāo zài shuǐ miàn shang。', char:'船'},
+  {syl:'che', tone:1, emoji:'🚗', words:['汽车','火车','马车'], wordsPy:['qì chē','huǒ chē','mǎ chē'], sentence:'汽车开得真快！', sentencePy:'qì chē kāi de zhēn kuài！', char:'车'},
+  {syl:'guo', tone:3, emoji:'🍎', words:['水果','苹果','果实'], wordsPy:['shuǐ guǒ','píng guǒ','guǒ shí'], sentence:'多吃水果身体好。', sentencePy:'duō chī shuǐ guǒ shēn tǐ hǎo。', char:'果'},
+  {syl:'gua', tone:1, emoji:'🍉', words:['西瓜','南瓜','黄瓜'], wordsPy:['xī guā','nán guā','huáng guā'], sentence:'夏天吃西瓜真解渴。', sentencePy:'xià tiān chī xī guā zhēn jiě kě。', char:'瓜'},
+  {syl:'dou', tone:4, emoji:'🫘', words:['红豆','大豆','豆子'], wordsPy:['hóng dòu','dà dòu','dòu zi'], sentence:'地里长满了豆子。', sentencePy:'dì lǐ zhǎng mǎn le dòu zi。', char:'豆'},
+  {syl:'mi', tone:3, emoji:'🌾', words:['大米','米饭','玉米'], wordsPy:['dà mǐ','mǐ fàn','yù mǐ'], sentence:'米饭真香。', sentencePy:'mǐ fàn zhēn xiāng。', char:'米'},
+  {syl:'fan', tone:4, emoji:'🍚', words:['吃饭','米饭','晚饭'], wordsPy:['chī fàn','mǐ fàn','wǎn fàn'], sentence:'我们一起吃饭。', sentencePy:'wǒ men yī qǐ chī fàn。', char:'饭'},
+  {syl:'cha', tone:2, emoji:'🍵', words:['喝茶','茶叶','奶茶'], wordsPy:['hē chá','chá yè','nǎi chá'], sentence:'爷爷爱喝茶。', sentencePy:'yé ye ài hē chá。', char:'茶'},
+  {syl:'nai', tone:3, emoji:'🥛', words:['牛奶','奶奶','酸奶'], wordsPy:['niú nǎi','nǎi nai','suān nǎi'], sentence:'每天早上喝牛奶。', sentencePy:'měi tiān zǎo shang hē niú nǎi。', char:'奶'},
+  {syl:'niu', tone:2, emoji:'🐮', words:['奶牛','水牛','黄牛'], wordsPy:['nǎi niú','shuǐ niú','huáng niú'], sentence:'奶牛产牛奶。', sentencePy:'nǎi niú chǎn niú nǎi。', char:'牛'},
+  {syl:'yang', tone:2, emoji:'🐑', words:['小羊','山羊','绵羊'], wordsPy:['xiǎo yáng','shān yáng','mián yáng'], sentence:'小羊在吃草。', sentencePy:'xiǎo yáng zài chī cǎo。', char:'羊'},
+  {syl:'tu', tone:4, emoji:'🐰', words:['兔子','白兔','小兔'], wordsPy:['tù zi','bái tù','xiǎo tù'], sentence:'小兔蹦蹦跳跳。', sentencePy:'xiǎo tù bèng bèng tiào tiào。', char:'兔'},
+  {syl:'hu', tone:3, emoji:'🐯', words:['老虎','虎头','虎年'], wordsPy:['lǎo hǔ','hǔ tóu','hǔ nián'], sentence:'老虎是百兽之王。', sentencePy:'lǎo hǔ shì bǎi shòu zhī wáng。', char:'虎'},
+  {syl:'long', tone:2, emoji:'🐉', words:['长龙','恐龙','龙王'], wordsPy:['cháng lóng','kǒng lóng','lóng wáng'], sentence:'恐龙早就灭绝了。', sentencePy:'kǒng lóng zǎo jiù miè jué le。', char:'龙'},
+  {syl:'xiang', tone:4, emoji:'🐘', words:['大象','象牙','象棋'], wordsPy:['dà xiàng','xiàng yá','xiàng qí'], sentence:'大象的鼻子长长的。', sentencePy:'dà xiàng de bí zi cháng cháng de。', char:'象'},
+];
+
+// 近音字库：每个音节 → [字, 声调]（用于「④ 选对字」的近音/同音字辨析）
+const HANZI = {
+  ba:  [['巴',1],['八',1],['拔',2],['把',3],['爸',4]],
+  ma:  [['妈',1],['麻',2],['马',3],['骂',4]],
+  da:  [['搭',1],['达',2],['打',3],['大',4]],
+  mu:  [['母',3],['木',4],['目',4],['亩',3]],
+  lü:  [['驴',2],['旅',3],['绿',4],['律',4]],
+  yu:  [['鱼',2],['雨',3],['玉',4],['语',3]],
+  mao: [['猫',1],['毛',2],['帽',4],['矛',2]],
+  gou: [['沟',1],['狗',3],['够',4],['购',4]],
+  niao:[['鸟',3],['尿',4],['袅',3]],
+  hua: [['花',1],['滑',2],['话',4],['画',4]],
+  cao: [['操',1],['草',3],['槽',2],['糙',1]],
+  shan:[['山',1],['闪',3],['善',4],['扇',4]],
+  xue: [['靴',1],['学',2],['雪',3],['血',4]],
+  feng:[['风',1],['丰',1],['缝',2],['凤',4]],
+  yun: [['云',2],['运',4],['晕',1],['允',3]],
+  tian:[['天',1],['田',2],['甜',2],['填',2]],
+  he:  [['喝',1],['河',2],['和',2],['贺',4]],
+  shu: [['书',1],['熟',2],['鼠',3],['树',4]],
+  hong:[['红',2],['洪',2],['哄',3],['轰',1]],
+  xiao:[['小',3],['笑',4],['校',4],['消',1]],
+  gao: [['高',1],['糕',1],['搞',3],['告',4]],
+  chang:[['长',2],['厂',3],['唱',4],['昌',1]],
+  shui:[['水',3],['谁',2],['睡',4],['税',4]],
+  huo: [['火',3],['活',2],['伙',3],['货',4]],
+  tu:  [['土',3],['图',2],['兔',4],['秃',1]],
+  kou: [['口',3],['扣',4],['寇',4],['抠',1]],
+  shou:[['手',3],['收',1],['瘦',4],['兽',4]],
+  tou: [['头',2],['偷',1],['投',2],['透',4]],
+  yan: [['烟',1],['盐',2],['眼',3],['燕',4]],
+  men: [['门',2],['闷',1],['们',5],['焖',4]],
+  deng:[['灯',1],['等',3],['登',1],['瞪',4]],
+  chuan:[['船',2],['川',1],['喘',3],['串',4]],
+  che: [['车',1],['扯',3],['彻',4],['撤',4]],
+  guo: [['果',3],['国',2],['过',4],['锅',1]],
+  gua: [['瓜',1],['挂',4],['刮',1],['卦',4]],
+  dou: [['豆',4],['都',1],['抖',3],['斗',4]],
+  mi:  [['米',3],['迷',2],['密',4],['眯',1]],
+  fan: [['饭',4],['翻',1],['烦',2],['反',3]],
+  cha: [['茶',2],['叉',1],['差',4],['插',1]],
+  nai: [['奶',3],['耐',4],['乃',3],['哪',3]],
+  niu: [['牛',2],['妞',1],['扭',3],['拗',4]],
+  yang:[['羊',2],['央',1],['养',3],['样',4]],
+  hu:  [['虎',3],['湖',2],['护',4],['乎',1]],
+  long:[['龙',2],['笼',2],['拢',3],['弄',4]],
+  xiang:[['象',4],['香',1],['响',3],['向',4]],
+};
+
+/* ============ 工具函数 ============ */
+function combine(init, final){
+  if(init === 'w'){ if(final==='ui') return 'wei'; if(final==='un') return 'wen'; }
+  if((init==='j'||init==='q'||init==='x'||init==='y') && final.startsWith('ü')){
+    final = 'u' + final.slice(1);
+  }
+  return init + final;
+}
+const TONE_MARKS = {
+  a:['a','ā','á','ǎ','à'], o:['o','ō','ó','ǒ','ò'], e:['e','ē','é','ě','è'],
+  i:['i','ī','í','ǐ','ì'], u:['u','ū','ú','ǔ','ù'], ü:['ü','ǖ','ǘ','ǚ','ǜ'],
+};
+function replaceFirst(s, ch, mark){ const i=s.indexOf(ch); return s.slice(0,i)+mark+s.slice(i+1); }
+function addTone(syl, tone){
+  if(!tone || tone===5) return syl;
+  if(syl.includes('a')) return replaceFirst(syl,'a',TONE_MARKS.a[tone]);
+  if(syl.includes('o')) return replaceFirst(syl,'o',TONE_MARKS.o[tone]);
+  if(syl.includes('e')) return replaceFirst(syl,'e',TONE_MARKS.e[tone]);
+  for(let k=syl.length-1;k>=0;k--){
+    const c=syl[k];
+    if(c==='i') return replaceFirst(syl,'i',TONE_MARKS.i[tone]);
+    if(c==='u') return replaceFirst(syl,'u',TONE_MARKS.u[tone]);
+    if(c==='ü') return replaceFirst(syl,'ü',TONE_MARKS.ü[tone]);
+  }
+  return syl;
+}
+function ruby(text, py){
+  // 逐字标拼音：text 汉字串，py 空格分隔的逐字拼音（只对汉字消费拼音 token，标点自动跳过）
+  const chars = [...text];
+  const tokens = (py||'').trim().split(/\s+/);
+  let ti = 0;
+  return chars.map(ch => {
+    if(/[一-龥]/.test(ch)){
+      const t = (tokens[ti++]||'').replace(/[^a-züāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/g,'');
+      return `<ruby>${ch}<rt>${t}</rt></ruby>`;
+    }
+    return ch;
+  }).join('');
+}
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))|0; } return Math.abs(h); }
+function shuffle(a){ a=[...a]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function decompose(syl){
+  for(const init in VALID){
+    for(const final of VALID[init]){
+      if(combine(init, final) === syl) return {init, final};
+    }
+  }
+  return null;
+}
+function skillFor(syl){
+  if(SPECIAL[syl]) return {c:SPECIAL[syl].c, skill:SPECIAL[syl].s};
+  const h = hashStr(syl);
+  const c = h % CHARACTERS.length;
+  return {c, skill:CHARACTERS[c].skills[h % CHARACTERS[c].skills.length]};
+}
+function speak(text, rate){
+  if(!('speechSynthesis' in window)) return;
+  try{ window.speechSynthesis.cancel(); }catch(e){}
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; u.rate = (rate==null) ? 0.9 : rate; u.volume = 1;
+  window.speechSynthesis.speak(u);
+}
+
+/* ============ 奖励儿歌（小星星） ============ */
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    audioCtx = new AC();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+// 小星星旋律：[频率 Hz, 时值秒]
+const TWINKLE = [
+  [261.63,.45],[261.63,.45],[392.00,.45],[392.00,.45],[440.00,.45],[440.00,.45],[392.00,.9],
+  [349.23,.45],[349.23,.45],[329.63,.45],[329.63,.45],[293.66,.45],[293.66,.45],[261.63,.9],
+  [392.00,.45],[392.00,.45],[349.23,.45],[349.23,.45],[329.63,.45],[329.63,.45],[293.66,.9],
+  [392.00,.45],[392.00,.45],[349.23,.45],[349.23,.45],[329.63,.45],[329.63,.45],[293.66,.9],
+  [261.63,.45],[261.63,.45],[392.00,.45],[392.00,.45],[440.00,.45],[440.00,.45],[392.00,.9],
+  [349.23,.45],[349.23,.45],[329.63,.45],[329.63,.45],[293.66,.45],[293.66,.45],[261.63,.9],
+];
+function playTwinkle(){
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  let t = ctx.currentTime + 0.06;
+  TWINKLE.forEach(([freq, dur]) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.02);
+    gain.gain.setValueAtTime(0.22, t + dur - 0.06);
+    gain.gain.linearRampToValueAtTime(0, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+    t += dur;
+  });
+}
+
+/* ============ 鼓励话术 ============ */
+const CHEER = [
+  '还差一点点，再试一次你可以的！💪',
+  '没关系，换一个试试，加油！🌟',
+  '别灰心，认真想一想一定能拼对！😊',
+  '已经很接近啦，再试试～✨',
+  '不着急，慢慢来，老师相信你！💛',
+  '小小的失误不算什么，再来一次！🌈',
+];
+let lastCheer = -1;
+function pickCheer(){
+  let i;
+  do { i = Math.floor(Math.random()*CHEER.length); } while(i === lastCheer && CHEER.length > 1);
+  lastCheer = i;
+  return CHEER[i];
+}
+
+/* ============ 状态 ============ */
+let mode = 'level';           // 'level' | 'free'
+let selInit = null, selFinal = null, tone = 1;
+let collected = loadCollected();
+let cleared = loadCleared();  // 已通关数（0..24），也是当前可玩关卡下标
+let curLevel = Math.min(cleared, LEVELS.length - 1);
+let lvInits = [], lvFinals = [];
+let needChar = false;
+
+/* ============ 本地存储 ============ */
+function loadCollected(){ try{ return new Set(JSON.parse(localStorage.getItem('py_collected')||'[]')); }catch(e){ return new Set(); } }
+function saveCollected(){ try{ localStorage.setItem('py_collected', JSON.stringify([...collected])); }catch(e){} }
+function loadCleared(){ try{ return parseInt(localStorage.getItem('py_cleared')||'0',10); }catch(e){ return 0; } }
+function saveCleared(){ try{ localStorage.setItem('py_cleared', String(cleared)); }catch(e){} }
+
+/* ============ DOM ============ */
+const $ = id => document.getElementById(id);
+const el = {
+  initials:$('initials'), finals:$('finals'), tones:$('tones'),
+  slotInit:$('slotInit'), slotFinal:$('slotFinal'), preview:$('preview'), hint:$('hint'),
+  summonBox:$('summonBox'), chips:$('chips'), log:$('log'), count:$('count'), lvCount:$('lvCount'), lvTotal:$('lvTotal'),
+  lvDots:$('lvDots'), lvTarget:$('lvTarget'), lvInits:$('lvInits'), lvFinals:$('lvFinals'),
+  lvTones:$('lvTones'), lvChars:$('lvChars'), lvResult:$('lvResult'), lvActions:$('lvActions'),
+  spellSteps:$('spellSteps'), charStep:$('charStep'),
+  freeView:$('freeView'), levelView:$('levelView'),
+  modeLevel:$('modeLevel'), modeFree:$('modeFree'),
+};
+
+/* ============ 渲染：自由召唤 ============ */
+function renderFreeDecks(){
+  el.initials.innerHTML = INITIALS.map(i => `<div class="card" data-init="${i}">${i}</div>`).join('');
+  el.finals.innerHTML = FINALS.map(f => `<div class="card" data-final="${f}">${f}</div>`).join('');
+  el.tones.innerHTML = toneButtonsHTML('tones');
+  refreshFreeSelection();
+}
+function toneButtonsHTML(gid){
+  return [['1','一声'],['2','二声'],['3','三声'],['4','四声'],['5','轻声']]
+    .map(([t,l]) => `<button class="tone ${+t===tone?'sel':''}" data-tone="${t}" data-g="${gid}">${l}</button>`).join('');
+}
+function refreshFreeSelection(){
+  el.initials.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c.dataset.init===selInit));
+  el.finals.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c.dataset.final===selFinal));
+  el.slotInit.textContent = selInit || '?'; el.slotInit.classList.toggle('filled', !!selInit);
+  el.slotFinal.textContent = selFinal || '?'; el.slotFinal.classList.toggle('filled', !!selFinal);
+  el.tones.querySelectorAll('.tone').forEach(t => t.classList.toggle('sel', +t.dataset.tone===tone));
+  updateFreePreview();
+}
+function updateFreePreview(){
+  if(selInit && selFinal){
+    const syl = combine(selInit, selFinal);
+    const valid = isValid(selInit, selFinal);
+    el.preview.textContent = addTone(syl, tone);
+    el.hint.textContent = valid ? '可以召唤成语！点下方按钮' : '⚠️ 这个组合不是有效拼音';
+    el.hint.style.color = valid ? '#bfe7f2' : '#ffb3a7';
+  } else if(selInit || selFinal){
+    el.preview.textContent = selInit ? (selInit+'…') : ('…'+selFinal);
+    el.hint.textContent = '再选另一张卡'; el.hint.style.color = '#bfe7f2';
+  } else {
+    el.preview.textContent = '—'; el.hint.textContent = '选一张声母和一张韵母试试'; el.hint.style.color = '#bfe7f2';
+  }
+}
+function isValid(init, final){ return (VALID[init]||[]).includes(final); }
+
+function freeSummon(){
+  if(!selInit || !selFinal){ el.hint.textContent='请先选一张声母和一张韵母'; return; }
+  if(!isValid(selInit, selFinal)){
+    const syl = combine(selInit, selFinal);
+    el.summonBox.innerHTML = `<div class="summon shake" style="animation-name:pop,shake;">
+      <div style="font-size:34px;">🌊</div>
+      <div class="skill">“${addTone(syl,tone)}” 不是有效拼音组合，换一张试试～</div></div>`;
+    el.hint.textContent='⚠️ 不是有效拼音组合'; return;
+  }
+  const syl = combine(selInit, selFinal);
+  const toneSyl = addTone(syl, tone);
+  collected.add(syl); saveCollected(); renderChips();
+  const info = chengyuInfo(syl);
+  if(info){
+    addLog(`<b>${toneSyl}</b> 成语「${info.i}」：${info.e}`);
+    el.summonBox.innerHTML = chengyuHTML(toneSyl, info);
+    speak(info.i, 0.6);
+  } else {
+    addLog(`<b>${toneSyl}</b>（暂无对应成语）`);
+    el.summonBox.innerHTML = `<div class="summon">
+      <div class="name" style="font-size:30px;">📖</div>
+      <div class="syl">${toneSyl}</div>
+      <div class="skill">这个音暂时还没收录成语，先记住它的拼音吧～</div></div>`;
+    speak(toneSyl, 0.6);
+  }
+}
+
+function chengyuInfo(syl){
+  const v = CHENGYU[syl];
+  if(!v) return null;
+  const k = v.indexOf('|');
+  if(k < 0) return {i:v, e:''};
+  return {i:v.slice(0,k), e:v.slice(k+1)};
+}
+
+function chengyuHTML(toneSyl, info){
+  return `<div class="summon">
+    <div class="name" style="font-size:30px; letter-spacing:2px;">${info.i}</div>
+    <div class="syl">${toneSyl}</div>
+    <div class="skill">💡 ${info.e}</div>
+  </div>`;
+}
+
+function summonHTML(char, toneSyl, skill){
+  return `<div class="summon">
+    <div class="hero">${char.emoji}</div>
+    <div class="name">${char.name}</div>
+    <div class="syl">${toneSyl}</div>
+    <div class="skill">发动技能「${skill}」</div>
+  </div>`;
+}
+
+function successCardHTML(char, toneSyl, skill, t){
+  const wordsHTML = t.words.map((w,i)=>ruby(w, t.wordsPy[i])).join('<span class="sep">·</span>');
+  return `
+    <div style="font-size:20px; font-weight:800; color:#2fbf71;">⭐ 过关啦！</div>
+    <div class="syl" style="font-size:34px; font-weight:800; color:#ffd34d; margin:6px 0;">${toneSyl}</div>
+    <div class="summon" style="margin-top:0; padding:10px;">
+      <div class="hero" style="font-size:44px;">${char.emoji}</div>
+      <div class="name" style="font-size:15px;">${char.name} 发动「${skill}」</div>
+    </div>
+    <div class="study">
+      <div class="study-row"><span class="lab">组词</span><span>${wordsHTML}</span></div>
+      <div class="study-row"><span class="lab">造句</span><span>${ruby(t.sentence, t.sentencePy)}</span></div>
+    </div>`;
+}
+
+/* ============ 渲染：闯关 ============ */
+function renderLevel(){
+  renderDots();
+  selInit = null; selFinal = null; tone = 1; needChar = false;
+  el.spellSteps.classList.remove('hidden');
+  el.charStep.classList.add('hidden');
+  const t = LEVELS[curLevel];
+  const d = decompose(t.syl);   // {init, final} 答案
+  el.lvTarget.innerHTML = `
+    <span class="emoji">${t.emoji}</span>
+    <div class="word">${t.words[0]}</div>
+    <div class="pinyin">${addTone(t.syl, t.tone)}</div>
+    <div class="ask">把这个音拼出来：先选声母，再选韵母，再选声调</div>`;
+  // 候选：正确答案 + 3 个干扰项
+  const inits = shuffle([d.init, ...pick(INITIALS.filter(x=>x!==d.init), 3)]);
+  const finals = shuffle([d.final, ...pick(FINALS.filter(f=>f!==d.final), 3)]);
+  lvInits = inits; lvFinals = finals;
+  el.lvInits.innerHTML = inits.map(i => `<div class="card" data-init="${i}">${i}</div>`).join('');
+  el.lvFinals.innerHTML = finals.map(f => `<div class="card" data-final="${f}">${f}</div>`).join('');
+  el.lvTones.innerHTML = toneButtonsHTML('lvTones');
+  el.lvResult.textContent = '';
+  el.lvActions.innerHTML = '<button class="btn-summon" id="lvConfirm">✅ 确认</button>';
+  $('lvConfirm').addEventListener('click', levelConfirm);
+  refreshLevelSelection();
+}
+function pick(arr, n){ return shuffle(arr).slice(0, n); }
+function renderDots(){
+  el.lvDots.innerHTML = LEVELS.map((_,i)=>{
+    let cls = 'lv-dot', label = i+1;
+    if(i < cleared) cls += ' done';
+    else if(i === curLevel) cls += ' cur';
+    else cls += ' lock';
+    return `<div class="${cls}" data-i="${i}">${i < cleared ? '⭐' : label}</div>`;
+  }).join('');
+  el.lvCount.textContent = cleared;
+  el.lvTotal.textContent = LEVELS.length;
+}
+function refreshLevelSelection(){
+  el.lvInits.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c.dataset.init===selInit));
+  el.lvFinals.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c.dataset.final===selFinal));
+  el.lvTones.querySelectorAll('.tone').forEach(t => t.classList.toggle('sel', +t.dataset.tone===tone));
+}
+function charPinyin(syl, ch){
+  const hit = (HANZI[syl]||[]).find(([c]) => c === ch);
+  return hit ? addTone(syl, hit[1]) : syl;
+}
+function askChar(){
+  const t = LEVELS[curLevel];
+  const toneSyl = addTone(t.syl, t.tone);
+  needChar = true;
+  const distractors = (HANZI[t.syl]||[]).filter(([c]) => c !== t.char).map(([c]) => c);
+  const opts = shuffle([t.char, ...distractors.slice(0, 3)]);
+  el.lvChars.innerHTML = opts.map(c => `<div class="card" data-char="${c}" style="font-size:34px;">${c}</div>`).join('');
+  el.spellSteps.classList.add('hidden');
+  el.charStep.classList.remove('hidden');
+  const ask = el.lvTarget.querySelector('.ask');
+  if(ask) ask.textContent = `④ 哪个字读「${toneSyl}」？选出来～`;
+  el.lvResult.textContent = '';
+  el.lvActions.innerHTML = '';
+  el.charStep.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function levelConfirm(){
+  if(!selInit || !selFinal){ el.lvResult.textContent='先选一张声母和一张韵母，老师等你哟～😊'; return; }
+  const t = LEVELS[curLevel];
+  const syl = combine(selInit, selFinal);
+  if(syl !== t.syl){
+    el.lvResult.innerHTML = `<span class="shake" style="display:inline-block;">💛 ${pickCheer()}</span>`;
+    return;
+  }
+  if(tone !== t.tone){
+    el.lvResult.textContent = '🔔 音节拼对啦，真棒！再把声调调对一下就过关～';
+    return;
+  }
+  askChar();
+}
+function levelSuccess(){
+  const t = LEVELS[curLevel];
+  const toneSyl = addTone(t.syl, t.tone);
+  const {c, skill} = skillFor(t.syl);
+  const char = CHARACTERS[c];
+  collected.add(t.syl); saveCollected(); renderChips();
+  if(curLevel >= cleared){ cleared = curLevel + 1; saveCleared(); }
+  needChar = false; el.charStep.classList.add('hidden');
+  const milestone = cleared % 5 === 0;
+  addLog(`⭐ 过关：<b>${toneSyl}</b>（${t.words[0]}）${char.emoji} ${char.name} 发动「${skill}」`);
+  el.lvResult.innerHTML = '';
+  el.lvActions.innerHTML = '';
+  let rewardHTML = '';
+  if(milestone){
+    rewardHTML = `<div class="summon" style="margin-top:10px;">
+      <div class="hero">🎵</div>
+      <div class="name">奖励时间！已完成 ${cleared} 关</div>
+      <div class="skill">为你播放《小星星》⭐</div>
+    </div>`;
+    playTwinkle();
+  }
+  el.lvTarget.innerHTML = successCardHTML(char, toneSyl, skill, t) + rewardHTML;
+  if(!milestone) speak(toneSyl + '，' + t.words[0] + '。' + t.sentence, 0.8);
+  const isLast = curLevel >= LEVELS.length - 1;
+  el.lvActions.innerHTML = isLast
+    ? '<button class="btn-summon" id="lvRestart">🎉 全部通关！再来一遍</button>'
+    : '<button class="btn-summon" id="lvNext">下一关 ▶</button>';
+  if(isLast){ $('lvRestart').addEventListener('click', ()=>{ curLevel=0; renderLevel(); }); }
+  else { $('lvNext').addEventListener('click', ()=>{ curLevel++; renderLevel(); }); }
+  renderDots();
+}
+
+/* ============ 公共渲染 ============ */
+function renderChips(){
+  el.count.textContent = collected.size;
+  el.chips.innerHTML = [...collected].map(s => `<span class="chip">${s}</span>`).join('');
+}
+function addLog(html){
+  const d = document.createElement('div'); d.className='logitem'; d.innerHTML=html;
+  el.log.prepend(d); while(el.log.children.length>30) el.log.removeChild(el.log.lastChild);
+}
+
+/* ============ 模式切换 ============ */
+function setMode(m){
+  mode = m;
+  el.modeLevel.classList.toggle('sel', m==='level');
+  el.modeFree.classList.toggle('sel', m==='free');
+  el.freeView.classList.toggle('hidden', m!=='free');
+  el.levelView.classList.toggle('hidden', m!=='level');
+  selInit = null; selFinal = null; tone = 1;
+  if(m==='level') renderLevel();
+  else { el.summonBox.innerHTML=''; renderFreeDecks(); }
+}
+
+/* ============ 事件 ============ */
+el.initials.addEventListener('click', e=>{
+  const c = e.target.closest('.card'); if(!c) return;
+  selInit = c.dataset.init; refreshFreeSelection();
+});
+el.finals.addEventListener('click', e=>{
+  const c = e.target.closest('.card'); if(!c) return;
+  selFinal = c.dataset.final; refreshFreeSelection();
+});
+el.lvInits.addEventListener('click', e=>{
+  const c = e.target.closest('.card'); if(!c) return;
+  selInit = c.dataset.init; refreshLevelSelection();
+});
+el.lvFinals.addEventListener('click', e=>{
+  const c = e.target.closest('.card'); if(!c) return;
+  selFinal = c.dataset.final; refreshLevelSelection();
+});
+el.lvChars.addEventListener('click', e=>{
+  const c = e.target.closest('.card'); if(!c) return;
+  if(!needChar) return;
+  const t = LEVELS[curLevel];
+  const picked = c.dataset.char;
+  if(picked === t.char){
+    levelSuccess();
+  } else {
+    const wrongPy = charPinyin(t.syl, picked);
+    el.lvResult.innerHTML = `<span class="shake" style="display:inline-block;">💛 这是「${picked}」，再想想「${addTone(t.syl, t.tone)}」对应的字是哪个～</span>`;
+    speak(`${picked}，${wrongPy}`, 0.7);
+  }
+});
+document.addEventListener('click', e=>{
+  const t = e.target.closest('.tone'); if(!t) return;
+  tone = +t.dataset.tone;
+  // 刷新两个声调区
+  document.querySelectorAll('.tone').forEach(b=>b.classList.toggle('sel', +b.dataset.tone===tone));
+  if(mode==='free') updateFreePreview();
+});
+el.lvDots.addEventListener('click', e=>{
+  const d = e.target.closest('.lv-dot'); if(!d) return;
+  const i = +d.dataset.i;
+  if(i <= cleared){ curLevel = i; renderLevel(); }
+});
+$('btnSummon').addEventListener('click', freeSummon);
+$('btnClear').addEventListener('click', ()=>{ selInit=null; selFinal=null; el.summonBox.innerHTML=''; refreshFreeSelection(); });
+el.modeLevel.addEventListener('click', ()=>setMode('level'));
+el.modeFree.addEventListener('click', ()=>setMode('free'));
+
+/* ============ 气泡 ============ */
+(function makeBubbles(){
+  const box = $('bubbles');
+  for(let i=0;i<26;i++){
+    const b = document.createElement('div');
+    b.className='bubble';
+    const size = 8 + Math.random()*30;
+    b.style.width=size+'px'; b.style.height=size+'px';
+    b.style.left=Math.random()*100+'%';
+    b.style.animationDuration=(8+Math.random()*12)+'s';
+    b.style.animationDelay=(Math.random()*10)+'s';
+    box.appendChild(b);
+  }
+})();
+
+/* ============ 初始化 ============ */
+renderChips();
+setMode('level');
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
